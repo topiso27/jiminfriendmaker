@@ -18,22 +18,33 @@ const db = getFirestore(app);
 // 방명록 메시지 보내기
 document.getElementById('guestbook-form').addEventListener('submit', async function(event) {
     event.preventDefault();
-    
+
+    // 버튼 비활성화
+    const submitButton = document.getElementById('submit-button');
+    submitButton.disabled = true; // 전송 중 버튼 비활성화
+
     const name = document.getElementById('name').value;
     const message = document.getElementById('message').value;
 
     if (name && message) {
         try {
+            // Firestore에 메시지 전송
             await addDoc(collection(db, "guestbook"), {
                 name: name,
                 message: message,
                 timestamp: serverTimestamp()
             });
+
+            // 입력 필드 초기화
             document.getElementById('name').value = '';
             document.getElementById('message').value = '';
+
             loadMessages(); // 메시지 새로고침
         } catch (e) {
             console.error("문서 추가 실패: ", e.message);
+        } finally {
+            // 버튼 다시 활성화
+            submitButton.disabled = false; // 전송 완료 후 버튼 활성화
         }
     }
 });
@@ -42,6 +53,8 @@ document.getElementById('guestbook-form').addEventListener('submit', async funct
 async function loadMessages() {
     const messagesContainer = document.getElementById('messages-container');
     messagesContainer.innerHTML = '';  // 기존 메시지 삭제
+
+    console.log("loadMessages 호출됨"); // 로그 추가 (중복 호출 확인용)
 
     const q = query(collection(db, "guestbook"), orderBy("timestamp", "desc"));
     const querySnapshot = await getDocs(q);
@@ -71,5 +84,8 @@ async function loadMessages() {
     });
 }
 
-// 페이지 로드 시 메시지 불러오기
-loadMessages();
+// 페이지 로드 시 메시지 불러오기 (한 번만 실행)
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("페이지 로드 완료");
+    loadMessages(); // 한 번만 실행되어야 함
+});
