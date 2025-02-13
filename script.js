@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // Firebase 설정
 const firebaseConfig = {
@@ -38,8 +38,6 @@ document.getElementById('guestbook-form').addEventListener('submit', async funct
             // 입력 필드 초기화
             document.getElementById('name').value = '';
             document.getElementById('message').value = '';
-
-            loadMessages(); // 메시지 새로고침
         } catch (e) {
             console.error("문서 추가 실패: ", e.message);
         } finally {
@@ -53,8 +51,6 @@ document.getElementById('guestbook-form').addEventListener('submit', async funct
 async function loadMessages() {
     const messagesContainer = document.getElementById('messages-container');
     messagesContainer.innerHTML = '';  // 기존 메시지 삭제
-
-    console.log("loadMessages 호출됨"); // 로그 추가 (중복 호출 확인용)
 
     const q = query(collection(db, "guestbook"), orderBy("timestamp", "desc"));
     const querySnapshot = await getDocs(q);
@@ -74,7 +70,6 @@ async function loadMessages() {
         messageElement.querySelector('.delete-btn').addEventListener('click', async () => {
             try {
                 await deleteDoc(doc(db, "guestbook", messageId)); // 해당 메시지 삭제
-                loadMessages(); // 삭제 후 메시지 새로고침
             } catch (e) {
                 console.error("메시지 삭제 실패: ", e.message);
             }
@@ -84,8 +79,42 @@ async function loadMessages() {
     });
 }
 
-// 페이지 로드 시 메시지 불러오기 (한 번만 실행)
+// 실시간 업데이트 처리 (onSnapshot 사용)
+function listenForChanges() {
+    const q = query(collection(db, "guestbook"), orderBy("timestamp", "desc"));
+
+    // Firestore의 실시간 업데이트 처리
+    onSnapshot(q, (querySnapshot) => {
+        const messagesContainer = document.getElementById('messages-container');
+        messagesContainer.innerHTML = ''; // 기존 메시지 초기화
+
+        querySnapshot.forEach((docSnapshot) => {
+            const data = docSnapshot.data();
+            const messageId = docSnapshot.id;
+
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.innerHTML = `
+                <div class="author">${data.name}</div>
+                <div class="content">${data.message}</div>
+                <button class="delete-btn" data-id="${messageId}">삭제</button>
+            `;
+
+            // 삭제 버튼 클릭 시 처리
+            messageElement.querySelector('.delete-btn').addEventListener('click', async () => {
+                try {
+                    await deleteDoc(doc(db, "guestbook", messageId)); // 해당 메시지 삭제
+                } catch (e) {
+                    console.error("메시지 삭제 실패: ", e.message);
+                }
+            });
+
+            messagesContainer.appendChild(messageElement);
+        });
+    });
+}
+
+// 페이지 로드 시 실시간 업데이트 시작
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("페이지 로드 완료");
-    loadMessages(); // 한 번만 실행되어야 함
+    listenForChanges(); // 실시간 업데이트 시작
 });
