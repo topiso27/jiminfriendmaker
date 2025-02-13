@@ -47,39 +47,7 @@ document.getElementById('guestbook-form').addEventListener('submit', async funct
     }
 });
 
-// 방명록 메시지 불러오기
-async function loadMessages() {
-    const messagesContainer = document.getElementById('messages-container');
-    messagesContainer.innerHTML = '';  // 기존 메시지 삭제
-
-    const q = query(collection(db, "guestbook"), orderBy("timestamp", "desc"));
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((docSnapshot) => {
-        const data = docSnapshot.data();
-        const messageId = docSnapshot.id; // 문서 ID
-
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message');
-        messageElement.innerHTML = `
-            <div class="author">${data.name}</div>
-            <div class="content">${data.message}</div>
-            <button class="delete-btn" data-id="${messageId}">삭제</button>
-        `;
-
-        // 삭제 버튼 클릭 시 처리
-        messageElement.querySelector('.delete-btn').addEventListener('click', async () => {
-            try {
-                await deleteDoc(doc(db, "guestbook", messageId)); // 해당 메시지 삭제
-            } catch (e) {
-                console.error("메시지 삭제 실패: ", e.message);
-            }
-        });
-
-        messagesContainer.appendChild(messageElement);
-    });
-}
-
-// 실시간 업데이트 처리 (onSnapshot 사용)
+// 방명록 메시지 불러오기 (실시간 업데이트용)
 function listenForChanges() {
     const q = query(collection(db, "guestbook"), orderBy("timestamp", "desc"));
 
